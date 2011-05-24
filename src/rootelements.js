@@ -209,7 +209,7 @@ function addToolbar(root, jQ) {
     $(this.href.replace(/.*#/, '#')).addClass('mathquill-tab-pane-selected');
   });
   jQ.find('.mathquill-tab-bar li:first-child a').mouseenter();
-  jQ.find('a.mathquill-rendered-math').mousedown(function() {
+  jQ.find('a.mathquill-rendered-math').mousedown(function(e) {
     e.stopPropagation();
   }).click(function(){
     root.cursor.writeLatex(this.title, true);
