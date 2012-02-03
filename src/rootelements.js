@@ -192,7 +192,7 @@ function addToolbar(root, jQ) {
     $.each(tab.button_groups, function(index, group) {
       $.each(group, function(index, cmd) {
         var obj = new LatexCmds[cmd](undefined, cmd);
-        buttons.push('<li><a class="mathquill-rendered-math" title="' + (cmd.match(/^[a-z]+$/) ? '\\' + cmd : cmd) + '">' +
+        buttons.push('<li><a class="mathquill-rendered-math" title="' + (cmd.match(/^[a-z]+$/i) ? '\\' + cmd : cmd) + '">' +
                      (html_template_overrides[cmd] ? html_template_overrides[cmd] : '<span style="line-height: 1.5em">' + obj.html_template.join('') + '</span>') +
                      '</a></li>');
       });
