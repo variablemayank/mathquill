@@ -22,6 +22,12 @@ h1 {
 td {
   width: 33%;
 }
+#diacritics td {
+  width: auto;
+}
+#diacritics {
+  width: 100%;
+}
 button {
   float: right;
 }
@@ -78,6 +84,59 @@ button {
 </table>
 
 <h3>Static LaTeX rendering (<code>.mathquill-embedded-latex</code>) tests</h3>
+<table id="diacritics">
+<tr>
+  <td><span class="mathquill-embedded-latex">\grave x</span>
+  <td><span class="mathquill-embedded-latex">\acute x</span>
+  <td><span class="mathquill-embedded-latex">\hat x</span>
+  <td><span class="mathquill-embedded-latex">\tilde x</span>
+  <td><span class="mathquill-embedded-latex">\bar x</span>
+  <td><span class="mathquill-embedded-latex">\breve x</span>
+  <td><span class="mathquill-embedded-latex">\dot x</span>
+  <td><span class="mathquill-embedded-latex">\ddot x</span>
+  <td><span class="mathquill-embedded-latex">\check x</span>
+<tr>
+  <td><span class="mathquill-embedded-latex">\grave X</span>
+  <td><span class="mathquill-embedded-latex">\acute X</span>
+  <td><span class="mathquill-embedded-latex">\hat X</span>
+  <td><span class="mathquill-embedded-latex">\tilde X</span>
+  <td><span class="mathquill-embedded-latex">\bar X</span>
+  <td><span class="mathquill-embedded-latex">\breve X</span>
+  <td><span class="mathquill-embedded-latex">\dot X</span>
+  <td><span class="mathquill-embedded-latex">\ddot X</span>
+  <td><span class="mathquill-embedded-latex">\check X</span>
+<tr>
+  <td><span class="mathquill-embedded-latex">\grave a</span>
+  <td><span class="mathquill-embedded-latex">\acute a</span>
+  <td><span class="mathquill-embedded-latex">\hat a</span>
+  <td><span class="mathquill-embedded-latex">\tilde a</span>
+  <td><span class="mathquill-embedded-latex">\bar a</span>
+  <td><span class="mathquill-embedded-latex">\breve a</span>
+  <td><span class="mathquill-embedded-latex">\dot a</span>
+  <td><span class="mathquill-embedded-latex">\ddot a</span>
+  <td><span class="mathquill-embedded-latex">\check a</span>
+<tr>
+  <td><span class="mathquill-embedded-latex">\grave A</span>
+  <td><span class="mathquill-embedded-latex">\acute A</span>
+  <td><span class="mathquill-embedded-latex">\hat A</span>
+  <td><span class="mathquill-embedded-latex">\tilde A</span>
+  <td><span class="mathquill-embedded-latex">\bar A</span>
+  <td><span class="mathquill-embedded-latex">\breve A</span>
+  <td><span class="mathquill-embedded-latex">\dot A</span>
+  <td><span class="mathquill-embedded-latex">\ddot A</span>
+  <td><span class="mathquill-embedded-latex">\check A</span>
+<tr>
+  <td><span class="mathquill-embedded-latex">\grave t</span>
+  <td><span class="mathquill-embedded-latex">\acute t</span>
+  <td><span class="mathquill-embedded-latex">\hat t</span>
+  <td><span class="mathquill-embedded-latex">\tilde t</span>
+  <td><span class="mathquill-embedded-latex">\bar t</span>
+  <td><span class="mathquill-embedded-latex">\breve t</span>
+  <td><span class="mathquill-embedded-latex">\dot t</span>
+  <td><span class="mathquill-embedded-latex">\ddot t</span>
+  <td><span class="mathquill-embedded-latex">\check t</span>
+</table>
+<form><label for="letter">Diacritics over another letter: </label><input type="text" id="letter"></form>
 <table>
 <tr><td><span class="mathquill-embedded-latex">^{\frac{as}{ }df}</span><td><span>^{\frac{as}{ }df}</span>
 <tr><td><span class="mathquill-embedded-latex">e^{i\pi}+1=0</span><td><span>e^{i\pi}+1=0</span>
@@ -131,6 +190,11 @@ $('#dynamic tr:eq(3)').each(function() {
   math.eq(1).detach().mathquill('editable').appendTo(td).mathquill('redraw');
   td = math.eq(2).parent();
   math.eq(2).detach().mathquill('editable').mathquill('revert').appendTo(td).mathquill('redraw');
+});
+$('form').submit(function() {
+  $('#diacritics').append('<tr><td><span class="mathquill-embedded-latex">\\grave ?</span><td><span class="mathquill-embedded-latex">\\acute ?</span><td><span class="mathquill-embedded-latex">\\hat ?</span><td><span class="mathquill-embedded-latex">\\tilde ?</span><td><span class="mathquill-embedded-latex">\\bar ?</span><td><span class="mathquill-embedded-latex">\\breve ?</span><td><span class="mathquill-embedded-latex">\\dot ?</span><td><span class="mathquill-embedded-latex">\\ddot ?</span><td><span class="mathquill-embedded-latex">\\check ?</span>'.replace(/\?/g, $('input').val())).find('tr:last').find('span').mathquill();
+  $('input').val('');
+  return false;
 });
 </script>
 </body>

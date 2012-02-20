@@ -76,7 +76,8 @@
 }
 /*separated from above because unrecognized pseudoclasses invalidate the entire selector*/
 .mathquill-editable .cursor:only-child:after,
-.mathquill-editable .textarea+.cursor:last-child:after {
+.mathquill-editable .textarea+.cursor:last-child:after,
+.mathquill-editable .diacritic-char+.cursor:last-child:after {
   visibility: hidden;
   content: 'c';
 }
@@ -250,6 +251,18 @@
 .mathquill-rendered-math .underline {
   border-bottom: 1px solid black;
   margin-bottom: 1px;
+}
+
+.mathquill-rendered-math .diacritic {
+  position: relative;
+}
+.mathquill-rendered-math .diacritic-char {
+  font-family: Symbola, "Times New Roman", serif;
+  text-align: center;
+  position: absolute;
+  top: -.25em;
+  left: -.4em;
+  right: 0;
 }
 
 .mathquill-rendered-math sup, .mathquill-rendered-math sub {

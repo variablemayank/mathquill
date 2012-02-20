@@ -93,6 +93,21 @@ LatexCmds.mathtt = bind(Style, '\\mathtt', '<span class="monospace font"></span>
 LatexCmds.underline = bind(Style, '\\underline', '<span class="underline"></span>');
 LatexCmds.overline = LatexCmds.bar = bind(Style, '\\overline', '<span class="overline"></span>');
 
+function Diacritic(cmd, html, replacedFragment) {
+  this.init(cmd, [ '<span class="diacritic"><span class="diacritic-char">'+html+'</span></span>' ], undefined, replacedFragment);
+}
+proto(MathCommand, Diacritic);
+//diacritics/accents
+LatexCmds.grave = bind(Diacritic, '\\grave', '&#768;');
+LatexCmds.acute = bind(Diacritic, '\\acute', '&#769;');
+LatexCmds.hat = LatexCmds.circumflex = bind(Diacritic, '\\hat', '&#770;');
+LatexCmds.tilde = bind(Diacritic, '\\tilde', '&#771;');
+LatexCmds.bar = bind(Diacritic, '\\bar', '&#773;');
+LatexCmds.breve = bind(Diacritic, '\\breve', '&#774;');
+LatexCmds.dot = bind(Diacritic, '\\dot', '&#775;');
+LatexCmds.ddot = bind(Diacritic, '\\ddot', '&#776;');
+LatexCmds.check = LatexCmds.caron = bind(Diacritic, '\\ddot', '&#780;');
+
 function SupSub(cmd, html, text, replacedFragment) {
   this.init(cmd, [ html ], [ text ], replacedFragment);
 }
