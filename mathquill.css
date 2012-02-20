@@ -260,9 +260,17 @@
   font-family: Symbola, "Times New Roman", serif;
   text-align: center;
   position: absolute;
-  top: -.25em;
+  top: -.2em;
   left: -.4em;
   right: 0;
+}
+.mathquill-rendered-math .lowercase.diacritic-char {
+  top: .1em;
+  left: -.55em;
+}
+.mathquill-rendered-math .only-lowercase-t.diacritic-char {
+  top: -.1em;
+  left: -.4em;
 }
 
 .mathquill-rendered-math sup, .mathquill-rendered-math sub {

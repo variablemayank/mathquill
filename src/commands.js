@@ -96,7 +96,20 @@ LatexCmds.overline = LatexCmds.bar = bind(Style, '\\overline', '<span class="ove
 function Diacritic(cmd, html, replacedFragment) {
   this.init(cmd, [ '<span class="diacritic"><span class="diacritic-char">'+html+'</span></span>' ], undefined, replacedFragment);
 }
-proto(MathCommand, Diacritic);
+_ = Diacritic.prototype = new MathCommand;
+_.redraw = function() {
+  var allLowerCase = !this.firstChild.isEmpty();
+  this.firstChild.eachChild(function(child) {
+    return allLowerCase = allLowerCase && (
+      child.cmd in
+        {a:1, c:1, e:1, g:1, m:1, n:1, o:1, p:1, q:1, r:1, s:1, u:1, v:1, w:1, x:1, y:1, z:1}
+      );
+  });
+  this.jQ.children(':first').toggleClass('lowercase', allLowerCase);
+  var onlyLowerCaseT = !allLowerCase && this.firstChild.firstChild === this.lastChild.lastChild
+    && this.firstChild.firstChild.cmd === 't';
+  this.jQ.children(':first').toggleClass('only-lowercase-t', onlyLowerCaseT);
+};
 //diacritics/accents
 LatexCmds.grave = bind(Diacritic, '\\grave', '&#768;');
 LatexCmds.acute = bind(Diacritic, '\\acute', '&#769;');
