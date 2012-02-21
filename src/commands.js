@@ -121,6 +121,7 @@ LatexCmds.ddot = bind(Diacritic, '\\ddot', '&#776;');
 LatexCmds.check = LatexCmds.caron = bind(Diacritic, '\\ddot', '&#780;');
 LatexCmds.dddot = bind(Diacritic, '\\dddot', '&#8411;');
 LatexCmds.ddddot = bind(Diacritic, '\\ddddot', '&#8412;');
+LatexCmds.vec = bind(Diacritic, '\\vec', '&#8407;');
 //overline
 LatexCmds.overline = proto(Diacritic, function(replacedFragment) {
   Style.call(this, '\\overline',

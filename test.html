@@ -142,7 +142,7 @@ $('#dynamic tr:eq(3)').each(function() {
 });
 
 function addDiacriticsRow(ch) {
-  $('#diacritics').append('<tr><td><span>\\overline ?</span><td><span>\\grave ?</span><td><span>\\acute ?</span><td><span>\\hat ?</span><td><span>\\tilde ?</span><td><span>\\bar ?</span><td><span>\\breve ?</span><td><span>\\dot ?</span><td><span>\\ddot ?</span><td><span>\\check ?</span><td><span>\\dddot ?</span><td><span>\\ddddot ?</span>'.replace(/\?/g, ch)).find('tr:last').find('span').mathquill();
+  $('#diacritics').append('<tr><td><span>\\overline ?</span><td><span>\\grave ?</span><td><span>\\acute ?</span><td><span>\\hat ?</span><td><span>\\tilde ?</span><td><span>\\bar ?</span><td><span>\\breve ?</span><td><span>\\dot ?</span><td><span>\\ddot ?</span><td><span>\\check ?</span><td><span>\\dddot ?</span><td><span>\\ddddot ?</span><td><span>\\vec ?</span>'.replace(/\?/g, ch)).find('tr:last').find('span').mathquill();
 }
 var charsToTest = 'xXaAt';
 for (var i = 0; i < charsToTest.length; i += 1)
