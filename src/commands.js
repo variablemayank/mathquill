@@ -91,7 +91,6 @@ LatexCmds.mathsf = bind(Style, '\\mathsf', '<span class="sans-serif font"></span
 LatexCmds.mathtt = bind(Style, '\\mathtt', '<span class="monospace font"></span>');
 //text-decoration
 LatexCmds.underline = bind(Style, '\\underline', '<span class="underline"></span>');
-LatexCmds.overline = LatexCmds.bar = bind(Style, '\\overline', '<span class="overline"></span>');
 
 function Diacritic(cmd, html, replacedFragment) {
   this.init(cmd, [ '<span class="diacritic"><span class="diacritic-char">'+html+'</span></span>' ], undefined, replacedFragment);
@@ -120,6 +119,11 @@ LatexCmds.breve = bind(Diacritic, '\\breve', '&#774;');
 LatexCmds.dot = bind(Diacritic, '\\dot', '&#775;');
 LatexCmds.ddot = bind(Diacritic, '\\ddot', '&#776;');
 LatexCmds.check = LatexCmds.caron = bind(Diacritic, '\\ddot', '&#780;');
+//overline
+LatexCmds.overline = proto(Diacritic, function(replacedFragment) {
+  Style.call(this, '\\overline',
+    '<span class="diacritic"><span class="overline"></span></span>', replacedFragment);
+});
 
 function SupSub(cmd, html, text, replacedFragment) {
   this.init(cmd, [ html ], [ text ], replacedFragment);
