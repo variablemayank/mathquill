@@ -216,7 +216,7 @@ _.resolveNonItalicizedFunctions = function() {
 };
 _.writeLatex = function(latex, noMoveCursor) {
   this.deleteSelection();
-  latex = ( latex && latex.match(/\\text\{([^{}]|\\\[{}])*\}|\\[\{\}\[\]]|[\(\)]|\\[a-z]*|[^\s]/ig) ) || 0;
+  latex = ( latex && latex.match(/\\mathbb\{[CHNPQRZ]\}|\\text\{([^{}]|\\\[{}])*\}|\\[\{\}\[\]]|[\(\)]|\\[a-z]*|[^\s]/ig) ) || 0;
   (function writeLatexBlock(cursor) {
     while (latex.length) {
       var token = latex.shift(); //pop first item
@@ -227,6 +227,11 @@ _.writeLatex = function(latex, noMoveCursor) {
         cmd = new TextBlock(token.slice(6, -1));
         cursor.insertNew(cmd).insertAfter(cmd);
         continue; //skip recursing through children
+      }
+      else if (/\\mathbb\{[CHNPQRZ]\}/.test(token)) {
+        cmd = new LatexCmds[token.slice(-2, -1)];
+        cursor.insertNew(cmd).insertAfter(cmd);
+        continue;
       }
       else if (token === '|') { //treat pipe as VanillaSymbol, unless it's a right pipe, i.e it has
                                 //a previous pipe sibling w/ at least one other intermediate element
