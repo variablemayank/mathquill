@@ -93,7 +93,7 @@ LatexCmds.mathtt = bind(Style, '\\mathtt', '<span class="monospace font"></span>
 LatexCmds.underline = bind(Style, '\\underline', '<span class="underline"></span>');
 
 function Diacritic(cmd, html, replacedFragment) {
-  this.init(cmd, [ '<span class="diacritic"><span class="diacritic-char">'+html+'</span></span>' ], undefined, replacedFragment);
+  this.init(cmd, [ '<span class="diacritic"><span class="diacritic-char">'+html+'&nbsp;</span></span>', '<span></span>' ], undefined, replacedFragment);
 }
 _ = Diacritic.prototype = new MathCommand;
 _.redraw = function() {
