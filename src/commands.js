@@ -118,6 +118,15 @@ _.redraw = _._redraw = function() {
     && this.firstChild.firstChild.cmd === 't';
   this.jQ.children(':first').toggleClass('only-lowercase-t', onlyLowerCaseT);
 };
+//force WebKit to redraw centered diacritic
+//https://bugs.webkit.org/show_bug.cgi?id=80808
+if ($.browser.webkit) {
+  _.redraw = function() {
+    this._redraw();
+    this.webkitForceRedrawToggle = !this.webkitForceRedrawToggle;
+    this.jQ.children(':first').css('display', this.webkitForceRedrawToggle ? 'inline-block' : '');
+  };
+}
 //diacritics/accents
 LatexCmds.grave = bind(Diacritic, '\\grave', '&#768;');
 LatexCmds.acute = bind(Diacritic, '\\acute', '&#769;');

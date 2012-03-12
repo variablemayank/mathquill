@@ -69,6 +69,8 @@ button {
 
 <p id="selection-performance"><b>Selection Performance</b>: <span class="mathquill-textbox">lolwut $a^2 + b^2 = c^2$.  Also, awesomesauce: $\int_0^1 \sin x dx.</span>
 
+<p id="diacritics-centering">Diacritic centers correctly: <span class="mathquill-editable" style="width:10em">\hat{x}</span>
+
 <h3>Dynamic mathquill-ification</h3>
 <table id="dynamic">
 <tr><th colspan=3>Initial LaTeX
@@ -127,6 +129,14 @@ document.body.onload = function() {
       $(this).after(new Date - start);
     });
   });
+
+  setTimeout(function() {
+    $('#diacritics-centering .mathquill-editable').data('[[mathquill internal data]]').block.cursor.moveLeft();
+    $('#diacritics-centering .mathquill-editable').mathquill('write', 'xxxxx');
+    if ($('#diacritics-centering .diacritic-char').width() < $('#diacritics-centering .diacritic').width()/2) {
+      $('#diacritics-centering').append(' <b>diacritic not centering correctly!</b>');
+    }
+  }, 500);
 };
 $('#dynamic tr:eq(1)').each(function() {
   var math = $('span', this);
