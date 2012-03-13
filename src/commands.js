@@ -117,6 +117,16 @@ _.redraw = _._redraw = function() {
   var onlyLowerCaseT = !allLowerCase && this.firstChild.firstChild === this.lastChild.lastChild
     && this.firstChild.firstChild.cmd === 't';
   this.jQ.children(':first').toggleClass('only-lowercase-t', onlyLowerCaseT);
+  if (!allLowerCase) {
+    var noBlockCmd = true;
+    this.firstChild.eachChild(function(child) {
+      return noBlockCmd = noBlockCmd && (child instanceof Symbol)
+        && !(child instanceof BigSymbol);
+    });
+  }
+  else
+    noBlockCmd = true;
+  this.jQ.toggleClass('block', !noBlockCmd);
 };
 //force WebKit to redraw centered diacritic
 //https://bugs.webkit.org/show_bug.cgi?id=80808
