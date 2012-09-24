@@ -206,7 +206,7 @@ function addToolbar(root, jQ) {
     jQ.find('.mathquill-tab-bar li').removeClass('mathquill-tab-selected');
     jQ.find('.mathquill-tab-pane').removeClass('mathquill-tab-pane-selected');
     $(this).parent().addClass('mathquill-tab-selected');
-    $(this.href.replace(/.*#/, '#')).addClass('mathquill-tab-pane-selected');
+    $(this.href.replace(/.*#/, '#'), this.ownerDocument).addClass('mathquill-tab-pane-selected');
   });
   jQ.find('.mathquill-tab-bar li:first-child a').mouseenter();
   jQ.find('a.mathquill-rendered-math').mousedown(function(e) {
