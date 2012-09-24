@@ -100,7 +100,7 @@ function createRoot(jQ, root, textbox, editable, include_toolbar) {
       anticursor.appendTo(cursor.parent);
 
     jQ.mousemove(mousemove);
-    $(document).mousemove(docmousemove).mouseup(mouseup);
+    $(e.target.ownerDocument).mousemove(docmousemove).mouseup(mouseup);
 
     setTimeout(function(){textarea.focus();});
   }).bind('selectstart.mathquill', false).blur();
@@ -124,7 +124,7 @@ function createRoot(jQ, root, textbox, editable, include_toolbar) {
     cursor.blink = blink;
     if (!cursor.selection) cursor.show();
     jQ.unbind('mousemove', mousemove);
-    $(document).unbind('mousemove', docmousemove).unbind('mouseup', mouseup);
+    $(e.target.ownerDocument).unbind('mousemove', docmousemove).unbind('mouseup', mouseup);
   }
 
   var anticursor, blink = cursor.blink;
