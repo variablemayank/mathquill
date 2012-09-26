@@ -230,7 +230,7 @@ _.text = function() {
   });
 };
 _.renderLatex = function(latex) {
-  this.jQ.children().slice(1).remove();
+  if (this.textarea) this.textarea.nextAll().remove();
   this.firstChild = this.lastChild = 0;
   this.cursor.appendTo(this).writeLatex(latex);
   this.blur();
