@@ -212,6 +212,7 @@ function addToolbar(root, jQ) {
   });
   jQ.find('.mathquill-tab-bar li:first-child a').mouseenter();
   jQ.find('a.mathquill-rendered-math')
+  .mousedown(false) // don't drag-to-select when clicking toolbar buttons
   .click(function(){
     root.cursor.writeLatex(this.title, true);
     jQ.focus();
