@@ -211,7 +211,8 @@ function addToolbar(root, jQ) {
     $(this.href.replace(/.*#/, '#'), this.ownerDocument).addClass('mathquill-tab-pane-selected');
   });
   jQ.find('.mathquill-tab-bar li:first-child a').mouseenter();
-  jQ.click(function(){
+  jQ.find('a.mathquill-rendered-math')
+  .click(function(){
     root.cursor.writeLatex(this.title, true);
     jQ.focus();
   });
