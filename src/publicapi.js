@@ -7,9 +7,15 @@
 $.fn.mathquill = function(cmd, latex) {
   switch (cmd) {
   case 'redraw':
-    this.find(':not(:has(:first))')
-      .data(jQueryDataKey).cmd.redraw();
-    return this;
+    return this.each(function() {
+      var data = $(this).data(jQueryDataKey);
+      if (data && data.block) {
+        (function postOrder(node) {
+          node.eachChild(postOrder);
+          if ('redraw' in node) node.redraw();
+        }(data.block));
+      }
+    });
   case 'revert':
     return this.each(function() {
       var data = $(this).data(jQueryDataKey);
