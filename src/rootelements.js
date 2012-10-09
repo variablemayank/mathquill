@@ -255,6 +255,9 @@ _.keydown = function(e)
   case 9: //tab
   case 'Tab':
   case 'U+0009':
+  case 32: //spacebar
+  case 'Spacebar':
+  case 'U+0020':
     if (e.ctrlKey) break;
 
     var parent = this.cursor.parent;
