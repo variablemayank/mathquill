@@ -288,37 +288,38 @@
 .mathquill-rendered-math .widehat {
   font-family: Symbola, "Times New Roman", serif;
   position: absolute;
-  top: -.2em;
-  right: 0;
+  top: -.25em;
 }
 .mathquill-rendered-math .diacritic-char {
   text-align: center;
-  left: -.1em;
+  width: 100%;
 }
 .mathquill-rendered-math .lowercase.diacritic-char {
-  top: .1em;
-  left: -.3em;
+  top: -.05em;
+  right: .1em;
 }
 .mathquill-rendered-math .only-lowercase-t.diacritic-char {
   top: -.1em;
-  left: -.2em;
+  right: .025em;
 }
 .mathquill-rendered-math .widehat {
-  left: -.1em;
-  -webkit-transform-origin: .15em;
-  -moz-transform-origin: .15em;
-  -ms-transform-origin: .125em; /* I have no idea why it's slightly off in IE9 */
-  -o-transform-origin: .15em;
-  transform-origin: .15em;
+  top: -.15em;
+  -webkit-transform-origin: .1em;
+  -moz-transform-origin: .1em;
+  -ms-transform-origin: .1em;
+  -o-transform-origin: .1em;
+  transform-origin: .1em;
 }
 .mathquill-rendered-math .lowercase.widehat {
-  top: .15em;
+  top: 0;
+  left: -.1em;
 }
 .mathquill-rendered-math .only-lowercase-t.widehat {
-  top: -.1em;
+  top: -.05em;
+  left: -.05em;
 }
 .mathquill-rendered-math .overarrow {
-  left: -.1em;
+  left: .1em;
   -webkit-transform-origin: .0535em;
   -moz-transform-origin: .0535em;
   -ms-transform-origin: .0535em;
@@ -326,26 +327,28 @@
   transform-origin: .0535em;
 }
 .mathquill-rendered-math .lowercase.overarrow {
-  top: .15em;
+  top: -.05em;
+  left: .05em;
 }
 .mathquill-rendered-math .only-lowercase-t.overarrow {
-  top: -.1em;
+  top: -.05em;
+  left: .05em;
 }
 
 .mathquill-rendered-math .overline {
   border-top: 1px solid black;
   margin-top: 1px;
   position: absolute;
-  top: -.2em;
-  left: 0;
+  top: -.25em;
+  left: .1em;
   right: -.2em;
 }
 .mathquill-rendered-math .lowercase.overline {
-  top: .1em;
+  top: -.05em;
   right: -.1em;
 }
 .mathquill-rendered-math .only-lowercase-t.overline {
-  top: 0;
+  top: -.1em;
   right: -.15em;
 }
 
