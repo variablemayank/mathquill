@@ -48,7 +48,7 @@ button {
 </style>
 
 </head>
-<body>
+<body onload="bodyOnLoad();">
 <div id="body">
 
 <a href="http://github.com/laughinghan/mathquill"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://a248.e.akamai.net/assets.github.com/img/4c7dc970b89fd04b81c8e221ba88ff99a06c6b61/687474703a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f77686974655f6666666666662e706e67" alt="Fork me on GitHub!"></a>
@@ -121,7 +121,7 @@ $.fn.prepend = function(el) {
     $(el).removeClass('shown-textarea').addClass('textarea');
   return _prepend.apply(this, arguments);
 };
-document.body.onload = function() {
+function bodyOnLoad() {
   setTimeout(function() {
     $('#selection-performance .mathquill-textbox').each(function() {
       var start = +new Date;
@@ -137,7 +137,7 @@ document.body.onload = function() {
       $('#diacritics-centering').append(' <b>diacritic not centering correctly!</b>');
     }
   }, 500);
-};
+}
 $('#dynamic tr:eq(1)').each(function() {
   var math = $('span', this);
   math.eq(0).mathquill();
