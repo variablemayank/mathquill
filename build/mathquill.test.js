@@ -3442,18 +3442,25 @@ var Bracket = P(MathCommand, function(_, _super) {
 
     scale(this.bracketjQs, min(1 + .2*(height - 1), 1.2), 1.05*height);
   };
+  _.oppBrack = function(node) {
+    return node instanceof Bracket && node.side === -this.side && node;
+  };
+  _.closeOpposing = function(brack) {
+    brack.side = 0;
+    brack.sides[this.side] = this.sides[this.side]; // copy over my info (may be
+    brack.bracketjQs.eq(this.side === L ? 0 : 1) // mis-matched, like [a, b))
+      .removeClass('ghost').html(this.sides[this.side].ch);
+  };
   _.createLeftOf = function(cursor) {
-    var side = this.side, brack = cursor.parent.parent;
-    if (!this.replacedFragment
-        && brack instanceof Bracket && brack.side === -side
-    ) { // I'm in a opposing one-sided bracket, close it!
-      brack.side = 0;
-      brack.sides[side] = this.sides[side]; // copy over my info (may be
-      brack.bracketjQs.eq(side === L ? 0 : 1) // mis-matched, like [a, b))
-        .removeClass('ghost').html(this.sides[side].ch);
-      if (cursor[side]) { // move everything between me and the ghost outside
-        Fragment(cursor[side], cursor.parent.ends[side], -side).disown()
-          .withDirAdopt(-side, brack.parent, brack, brack[side])
+    var side = this.side; // unless wrapping seln in brackets, check if next to
+    if (!this.replacedFragment) { // or inside an opposing one-sided bracket
+      var brack = this.oppBrack(cursor[-side]) || this.oppBrack(cursor.parent.parent);
+    }
+    if (brack) {
+      this.closeOpposing(brack);
+      if (brack === cursor.parent.parent && cursor[side]) { // move the stuff between
+        Fragment(cursor[side], cursor.parent.ends[side], -side) // me and ghost outside
+          .disown().withDirAdopt(-side, brack.parent, brack, brack[side])
           .jQ.insDirOf(side, brack.jQ);
         brack.bubble('edited');
       }
@@ -3471,38 +3478,68 @@ var Bracket = P(MathCommand, function(_, _super) {
     else cursor.insRightOf(brack);
   };
   _.placeCursor = noop;
-  _.oneSideify = function(side) { // become one-sided by deleting one of the
-    this.side = side;             // brackets in the matched pair
-    this.sides[-side] = { ch: OPP_BRACKS[this.sides[side].ch],
-                          ctrlSeq: OPP_BRACKS[this.sides[side].ctrlSeq] };
-    this.bracketjQs.removeClass('ghost')
-      .eq(side === L ? 1 : 0).addClass('ghost').html(this.sides[-side].ch);
-    if (this[-side]) { // auto-expand so ghost is at far end
-      Fragment(this[-side], this.parent.ends[-side], side).disown()
-        .withDirAdopt(side, this.ends[L], this.ends[L].ends[-side], 0)
-        .jQ.insAtDirEnd(-side, this.ends[L].jQ);
+  _.unwrap = function() {
+    this.ends[L].children().disown().adopt(this.parent, this, this[R])
+      .jQ.insertAfter(this.jQ);
+    this.remove();
+  };
+  _.deleteSide = function(side, outward, cursor) {
+    var parent = this.parent, sib = this[side], farEnd = parent.ends[side];
+
+    if (side === this.side) { // deleting non-ghost of one-sided bracket, unwrap
+      this.unwrap();
+      sib ? cursor.insDirOf(-side, sib) : cursor.insAtDirEnd(side, parent);
+      return;
+    }
+
+    this.side = -side;
+    // check if like deleting outer close-brace of [(1+2)+3} where inner open-
+    if (this.oppBrack(this.ends[L].ends[this.side])) { // paren is ghost, if
+      this.closeOpposing(this.ends[L].ends[this.side]); // so become [1+2)+3
+      var origEnd = this.ends[L].ends[side];
+      this.unwrap();
+      if (origEnd.siblingCreated) origEnd.siblingCreated(side);
+      sib ? cursor.insDirOf(-side, sib) : cursor.insAtDirEnd(side, parent);
+    }
+    else { // check if like deleting inner close-brace of ([1+2}+3) where
+      if (this.oppBrack(this.parent.parent)) { // outer open-paren is ghost,
+        this.parent.parent.closeOpposing(this); // if so become [1+2+3)
+        this.parent.parent.unwrap();
+      }
+      else { // deleting one of a pair of brackets, become one-sided
+        this.sides[side] = { ch: OPP_BRACKS[this.sides[this.side].ch],
+                             ctrlSeq: OPP_BRACKS[this.sides[this.side].ctrlSeq] };
+        this.bracketjQs.removeClass('ghost')
+          .eq(side === L ? 0 : 1).addClass('ghost').html(this.sides[side].ch);
+      }
+      if (sib) { // auto-expand so ghost is at far end
+        var origEnd = this.ends[L].ends[side];
+        Fragment(sib, farEnd, -side).disown()
+          .withDirAdopt(-side, this.ends[L], origEnd, 0)
+          .jQ.insAtDirEnd(side, this.ends[L].jQ);
+        if (origEnd.siblingCreated) origEnd.siblingCreated(side);
+        cursor.insDirOf(-side, sib);
+      } // didn't auto-expand, cursor goes just outside or just inside parens
+      else (outward ? cursor.insDirOf(side, this)
+                    : cursor.insAtDirEnd(side, this.ends[L]));
     }
   };
   _.deleteTowards = function(dir, cursor) {
-    if (dir === -this.side) { // deleting non-ghost of one-sided bracket, so
-      this.ends[L].children().disown() // move everything in me outside, and
-        .withDirAdopt(dir, this.parent, this[dir], this).jQ.insDirOf(dir, this.jQ);
-      this.remove(); // remove me
-      cursor[dir] = cursor[-dir] ? cursor[-dir][dir] : cursor.parent.ends[-dir];
-      return;
-    }
-    cursor.insAtDirEnd(-dir, this.ends[L]);
-    cursor[-dir] = this[-dir];
-    this.oneSideify(dir);
+    this.deleteSide(-dir, false, cursor);
   };
   _.finalizeTree = function() {
     this.ends[L].deleteOutOf = function(dir, cursor) {
-      if (dir === this.parent.side) return cursor.unwrapGramp(); // non-ghost side
-
-      this.parent.oneSideify(-dir);
-      cursor[-dir] ? cursor.insDirOf(dir, cursor[-dir])
-                   : cursor.insAtDirEnd(-dir, this);
+      this.parent.deleteSide(dir, true, cursor);
     };
+    // FIXME HACK: after initial creation/insertion, finalizeTree would only be
+    // called if the paren is selected and replaced, e.g. by LiveFraction
+    this.finalizeTree = function() {
+      this.bracketjQs.eq(this.side === L ? 1 : 0).removeClass('ghost');
+      this.side = 0;
+    };
+  };
+  _.siblingCreated = function(dir) { // if something typed between ghost and far
+    if (dir === -this.side) this.finalizeTree(); // end of its block, solidify
   };
 });
 
@@ -5812,255 +5849,356 @@ suite('typing with auto-replaces', function() {
   });
 
   suite('auto-expanding parens', function() {
-    test('empty parens', function() {
-      mq.typedText('(');
-      assertLatex('\\left(\\right)');
-      mq.typedText(')');
-      assertLatex('\\left(\\right)');
+    suite('simple', function() {
+      test('empty parens', function() {
+        mq.typedText('(');
+        assertLatex('\\left(\\right)');
+        mq.typedText(')');
+        assertLatex('\\left(\\right)');
+      });
+
+      test('straight typing', function() {
+        mq.typedText('1+(2+3)+4');
+        assertLatex('1+\\left(2+3\\right)+4');
+      });
+
+      test('wrapping things in parens', function() {
+        mq.typedText('1+2+3+4');
+        assertLatex('1+2+3+4');
+        mq.keystroke('Left Left').typedText(')');
+        assertLatex('\\left(1+2+3\\right)+4');
+        mq.keystroke('Left Left Left Left').typedText('(');
+        assertLatex('1+\\left(2+3\\right)+4');
+      });
     });
 
-    test('straight typing', function() {
-      mq.typedText('1+(2+3)+4');
-      assertLatex('1+\\left(2+3\\right)+4');
+    suite('mis-matched brackets', function() {
+      test('empty mis-matched brackets', function() {
+        mq.typedText('(');
+        assertLatex('\\left(\\right)');
+        mq.typedText(']');
+        assertLatex('\\left(\\right]');
+      });
+
+      test('typing mis-matched brackets', function() {
+        mq.typedText('1+');
+        assertLatex('1+');
+        mq.typedText('(');
+        assertLatex('1+\\left(\\right)');
+        mq.typedText('2+3');
+        assertLatex('1+\\left(2+3\\right)');
+        mq.typedText(']+4');
+        assertLatex('1+\\left(2+3\\right]+4');
+      });
+
+      test('wrapping things in mis-matched brackets', function() {
+        mq.typedText('1+2+3+4');
+        assertLatex('1+2+3+4');
+        mq.keystroke('Left Left').typedText(']');
+        assertLatex('\\left[1+2+3\\right]+4');
+        mq.keystroke('Left Left Left Left').typedText('(');
+        assertLatex('1+\\left(2+3\\right]+4');
+      });
     });
 
-    test('wrapping things in parens', function() {
-      mq.typedText('1+2+3+4');
-      assertLatex('1+2+3+4');
-      mq.keystroke('Left Left').typedText(')');
-      assertLatex('\\left(1+2+3\\right)+4');
-      mq.keystroke('Left Left Left Left').typedText('(');
-      assertLatex('1+\\left(2+3\\right)+4');
+    suite('backspacing', function() {
+      test('typing then backspacing a paren', function() {
+        mq.typedText('1+2+3+4');
+        assertLatex('1+2+3+4');
+        mq.keystroke('Left Left').typedText(')');
+        assertLatex('\\left(1+2+3\\right)+4');
+        mq.keystroke('Backspace');
+        assertLatex('1+2+3+4');
+      });
+
+      test('backspacing close paren then open paren', function() {
+        mq.typedText('1+(2+3)+4');
+        assertLatex('1+\\left(2+3\\right)+4');
+        mq.keystroke('Left Left Backspace');
+        assertLatex('1+\\left(2+3+4\\right)');
+        mq.keystroke('Left Left Left Backspace');
+        assertLatex('1+2+3+4');
+      });
+
+      test('backspacing open paren then close paren', function() {
+        mq.typedText('1+(2+3)+4');
+        assertLatex('1+\\left(2+3\\right)+4');
+        mq.keystroke('Left Left Left Left Left Left Backspace');
+        assertLatex('\\left(1+2+3\\right)+4');
+        mq.keystroke('Right Right Right Right Backspace');
+        assertLatex('1+2+3+4');
+      });
+
+      test('backspacing close bracket then open paren', function() {
+        mq.typedText('1+(2+3]+4');
+        assertLatex('1+\\left(2+3\\right]+4');
+        mq.keystroke('Left Left Backspace');
+        assertLatex('1+\\left(2+3+4\\right)');
+        mq.keystroke('Left Left Left Backspace');
+        assertLatex('1+2+3+4');
+      });
+
+      test('backspacing open paren then close bracket', function() {
+        mq.typedText('1+(2+3]+4');
+        assertLatex('1+\\left(2+3\\right]+4');
+        mq.keystroke('Left Left Left Left Left Left Backspace');
+        assertLatex('\\left[1+2+3\\right]+4');
+        mq.keystroke('Right Right Right Right Backspace');
+        assertLatex('1+2+3+4');
+      });
+
+
+      test('backspacing close bracket then open paren at end', function() {
+        mq.typedText('1+(2+3]');
+        assertLatex('1+\\left(2+3\\right]');
+        mq.keystroke('Backspace');
+        assertLatex('1+\\left(2+3\\right)');
+        mq.keystroke('Left Left Left Backspace');
+        assertLatex('1+2+3');
+      });
+
+      test('backspacing open paren then close bracket at end', function() {
+        mq.typedText('1+(2+3]');
+        assertLatex('1+\\left(2+3\\right]');
+        mq.keystroke('Left Left Left Left Backspace');
+        assertLatex('\\left[1+2+3\\right]');
+        mq.keystroke('Right Right Right Right Backspace');
+        assertLatex('1+2+3');
+      });
+
+      test('backspacing close bracket then open paren at beginning', function() {
+        mq.typedText('(2+3]+4');
+        assertLatex('\\left(2+3\\right]+4');
+        mq.keystroke('Left Left Backspace');
+        assertLatex('\\left(2+3+4\\right)');
+        mq.keystroke('Left Left Left Backspace');
+        assertLatex('2+3+4');
+      });
+
+      test('backspacing open paren then close bracket at beginning', function() {
+        mq.typedText('(2+3]+4');
+        assertLatex('\\left(2+3\\right]+4');
+        mq.keystroke('Left Left Left Left Left Left Backspace');
+        assertLatex('\\left[2+3\\right]+4');
+        mq.keystroke('Right Right Right Right Right Backspace');
+        assertLatex('2+3+4');
+      });
+
+      test('backspacing close bracket then open paren of empty paren group', function() {
+        mq.typedText('1+(]+4');
+        assertLatex('1+\\left(\\right]+4');
+        mq.keystroke('Left Left Backspace');
+        assertLatex('1+\\left(+4\\right)');
+        mq.keystroke('Backspace');
+        assertLatex('1++4');
+      });
+
+      test('backspacing open paren then close bracket of empty paren group', function() {
+        mq.typedText('1+(]+4');
+        assertLatex('1+\\left(\\right]+4');
+        mq.keystroke('Left Left Left Backspace');
+        assertLatex('\\left[1+\\right]+4');
+        mq.keystroke('Right Backspace');
+        assertLatex('1++4');
+      });
+
+      test('backspacing close bracket then open paren at end of empty paren group', function() {
+        mq.typedText('1+(]');
+        assertLatex('1+\\left(\\right]');
+        mq.keystroke('Backspace');
+        assertLatex('1+\\left(\\right)');
+        mq.keystroke('Backspace');
+        assertLatex('1+');
+      });
+
+      test('backspacing open paren then close bracket at end of empty paren group', function() {
+        mq.typedText('1+(]');
+        assertLatex('1+\\left(\\right]');
+        mq.keystroke('Left Backspace');
+        assertLatex('\\left[1+\\right]');
+        mq.keystroke('Right Right Backspace');
+        assertLatex('1+');
+      });
+
+      test('backspacing close bracket then open paren at beginning of empty paren group', function() {
+        mq.typedText('(]+4');
+        assertLatex('\\left(\\right]+4');
+        mq.keystroke('Left Left Backspace');
+        assertLatex('\\left(+4\\right)');
+        mq.keystroke('Backspace');
+        assertLatex('+4');
+      });
+
+      test('backspacing open paren then close bracket at beginning of empty paren group', function() {
+        mq.typedText('(]+4');
+        assertLatex('\\left(\\right]+4');
+        mq.keystroke('Left Left Left Backspace');
+        assertLatex('\\left[\\right]+4');
+        mq.keystroke('Right Right Backspace');
+        assertLatex('+4');
+      });
+
+      test('rendering mis-matched brackets from LaTeX then backspacing close bracket then open paren', function() {
+        mq.latex('1+\\left(2+3\\right]+4');
+        assertLatex('1+\\left(2+3\\right]+4');
+        mq.keystroke('Left Left Backspace');
+        assertLatex('1+\\left(2+3+4\\right)');
+        mq.keystroke('Left Left Left Backspace');
+        assertLatex('1+2+3+4');
+      });
+
+      test('rendering mis-matched brackets from LaTeX then backspacing open paren then close bracket', function() {
+        mq.latex('1+\\left(2+3\\right]+4');
+        assertLatex('1+\\left(2+3\\right]+4');
+        mq.keystroke('Left Left Left Left Left Left Backspace');
+        assertLatex('\\left[1+2+3\\right]+4');
+        mq.keystroke('Right Right Right Right Backspace');
+        assertLatex('1+2+3+4');
+      });
+
+      test('rendering paren from LaTeX then backspacing close paren then open paren', function() {
+        mq.latex('1+\\left(2+3\\right)+4');
+        assertLatex('1+\\left(2+3\\right)+4');
+        mq.keystroke('Left Left Backspace');
+        assertLatex('1+\\left(2+3+4\\right)');
+        mq.keystroke('Left Left Left Backspace');
+        assertLatex('1+2+3+4');
+      });
+
+      test('rendering paren from LaTeX then backspacing open paren then close paren', function() {
+        mq.latex('1+\\left(2+3\\right)+4');
+        assertLatex('1+\\left(2+3\\right)+4');
+        mq.keystroke('Left Left Left Left Left Left Backspace');
+        assertLatex('\\left(1+2+3\\right)+4');
+        mq.keystroke('Right Right Right Right Backspace');
+        assertLatex('1+2+3+4');
+      });
+
+      test('wrapping selection in parens then backspacing close paren then open paren', function() {
+        mq.typedText('1+2+3+4');
+        assertLatex('1+2+3+4');
+        mq.keystroke('Left Left Shift-Left Shift-Left Shift-Left').typedText(')');
+        assertLatex('1+\\left(2+3\\right)+4');
+        mq.keystroke('Backspace');
+        assertLatex('1+\\left(2+3+4\\right)');
+        mq.keystroke('Left Left Left Backspace');
+        assertLatex('1+2+3+4');
+      });
+
+      test('wrapping selection in parens then backspacing open paren then close paren', function() {
+        mq.typedText('1+2+3+4');
+        assertLatex('1+2+3+4');
+        mq.keystroke('Left Left Shift-Left Shift-Left Shift-Left').typedText('(');
+        assertLatex('1+\\left(2+3\\right)+4');
+        mq.keystroke('Backspace');
+        assertLatex('\\left(1+2+3\\right)+4');
+        mq.keystroke('Right Right Right Right Backspace');
+        assertLatex('1+2+3+4');
+      });
+
+      test('backspacing close bracket at the end then typing', function() {
+        mq.typedText('1+(2+3]');
+        assertLatex('1+\\left(2+3\\right]');
+        mq.keystroke('Backspace');
+        assertLatex('1+\\left(2+3\\right)');
+        mq.typedText('+4');
+        assertLatex('1+\\left(2+3+4\\right)');
+      });
+
+      test('backspacing open paren at the beginning then typing', function() {
+        mq.typedText('(2+3]+4');
+        assertLatex('\\left(2+3\\right]+4');
+        mq.keystroke('Home Right Backspace');
+        assertLatex('\\left[2+3\\right]+4');
+        mq.typedText('1+');
+        assertLatex('1+\\left[2+3\\right]+4');
+      });
+
+      test('backspacing paren containing a one-sided paren', function() {
+        mq.typedText('0+[1+2+3}+4');
+        assertLatex('0+\\left[1+2+3\\right\\}+4');
+        mq.keystroke('Left Left Left Left Left').typedText(')');
+        assertLatex('0+\\left[\\left(1+2\\right)+3\\right\\}+4');
+        mq.keystroke('Right Right Right Backspace');
+        assertLatex('0+\\left[1+2\\right)+3+4');
+      });
+
+      test('backspacing paren inside a one-sided paren', function() {
+        mq.typedText('0+[1+2}+3)+4');
+        assertLatex('\\left(0+\\left[1+2\\right\\}+3\\right)+4');
+        mq.keystroke('Left Left Left Left Left Backspace');
+        assertLatex('0+\\left[1+2+3\\right)+4');
+      });
+
+      test('backspacing paren containing and inside a one-sided paren', function() {
+        mq.typedText('(1+2))');
+        assertLatex('\\left(\\left(1+2\\right)\\right)');
+        mq.keystroke('Left Left').typedText(']');
+        assertLatex('\\left(\\left(\\left[1+2\\right]\\right)\\right)');
+        mq.keystroke('Right Backspace');
+        assertLatex('\\left(\\left(1+2\\right]\\right)');
+        mq.keystroke('Backspace');
+        assertLatex('\\left(1+2\\right)');
+      });
+
+      test('auto-expanding calls .siblingCreated() on new siblings', function() {
+        mq.typedText('1+((2+3))');
+        assertLatex('1+\\left(\\left(2+3\\right)\\right)');
+        mq.keystroke('Left Left Left Left Left Backspace');
+        assertLatex('1+\\left(\\left(2+3\\right)\\right)');
+        mq.keystroke('Backspace');
+        assertLatex('\\left(1+\\left(2+3\\right)\\right)');
+        // now check that the inner open-paren isn't still a ghost
+        mq.keystroke('Right Right Right Right Del');
+        assertLatex('1+\\left(2+3\\right)');
+      });
+
+      test('that unwrapping calls .siblingCreated() on new siblings', function() {
+        mq.typedText('(1+2+3+4)+5');
+        assertLatex('\\left(1+2+3+4\\right)+5');
+        mq.keystroke('Home Right Right Right Right').typedText(')');
+        assertLatex('\\left(\\left(1+2\\right)+3+4\\right)+5');
+        mq.keystroke('Right').typedText('(');
+        assertLatex('\\left(\\left(1+2\\right)+\\left(3+4\\right)\\right)+5');
+        mq.keystroke('Right Right Right Right Right Backspace');
+        assertLatex('\\left(1+2\\right)+\\left(3+4\\right)+5');
+        mq.keystroke('Left Left Left Left Backspace');
+        assertLatex('\\left(\\left(1+2\\right)+3+4\\right)+5');
+      });
+
+      test('selected and replaced by LiveFraction solidifies ghosts', function() {
+        mq.typedText('1+2)/');
+        assertLatex('\\frac{\\left(1+2\\right)}{ }');
+        mq.keystroke('Left Backspace');
+        assertLatex('\\frac{\\left(1+2\\right)}{ }');
+      });
     });
 
-    test('empty mis-matched brackets', function() {
-      mq.typedText('(');
-      assertLatex('\\left(\\right)');
-      mq.typedText(']');
-      assertLatex('\\left(\\right]');
-    });
+    suite('typing outside ghost paren', function() {
+      test('paren no longer one-sided after typing outside ghost paren', function() {
+        mq.typedText('1+(2+3');
+        assertLatex('1+\\left(2+3\\right)');
+        mq.keystroke('Right').typedText('+4');
+        assertLatex('1+\\left(2+3\\right)+4');
+        mq.keystroke('Left Left Left Left Left Left Backspace');
+        assertLatex('\\left(1+2+3\\right)+4');
+      });
 
-    test('typing mis-matched brackets', function() {
-      mq.typedText('1+');
-      assertLatex('1+');
-      mq.typedText('(');
-      assertLatex('1+\\left(\\right)');
-      mq.typedText('2+3');
-      assertLatex('1+\\left(2+3\\right)');
-      mq.typedText(']+4');
-      assertLatex('1+\\left(2+3\\right]+4');
-    });
+      test('close bracket pair by typing close-bracket outside ghost paren', function() {
+        mq.typedText('(1+2');
+        assertLatex('\\left(1+2\\right)');
+        mq.keystroke('Right').typedText(']');
+        assertLatex('\\left(1+2\\right]');
+      });
 
-    test('wrapping things in mis-matched brackets', function() {
-      mq.typedText('1+2+3+4');
-      assertLatex('1+2+3+4');
-      mq.keystroke('Left Left').typedText(']');
-      assertLatex('\\left[1+2+3\\right]+4');
-      mq.keystroke('Left Left Left Left').typedText('(');
-      assertLatex('1+\\left(2+3\\right]+4');
-    });
-
-    test('typing then backspacing a paren', function() {
-      mq.typedText('1+2+3+4');
-      assertLatex('1+2+3+4');
-      mq.keystroke('Left Left').typedText(')');
-      assertLatex('\\left(1+2+3\\right)+4');
-      mq.keystroke('Backspace');
-      assertLatex('1+2+3+4');
-    });
-
-    test('backspacing close paren then open paren', function() {
-      mq.typedText('1+(2+3)+4');
-      assertLatex('1+\\left(2+3\\right)+4');
-      mq.keystroke('Left Left Backspace');
-      assertLatex('1+\\left(2+3+4\\right)');
-      mq.keystroke('Left Left Left Backspace');
-      assertLatex('1+2+3+4');
-    });
-
-    test('backspacing open paren then close paren', function() {
-      mq.typedText('1+(2+3)+4');
-      assertLatex('1+\\left(2+3\\right)+4');
-      mq.keystroke('Left Left Left Left Left Left Backspace');
-      assertLatex('\\left(1+2+3\\right)+4');
-      mq.keystroke('Right Right Right Right Backspace');
-      assertLatex('1+2+3+4');
-    });
-
-    test('backspacing close bracket then open paren', function() {
-      mq.typedText('1+(2+3]+4');
-      assertLatex('1+\\left(2+3\\right]+4');
-      mq.keystroke('Left Left Backspace');
-      assertLatex('1+\\left(2+3+4\\right)');
-      mq.keystroke('Left Left Left Backspace');
-      assertLatex('1+2+3+4');
-    });
-
-    test('backspacing open paren then close bracket', function() {
-      mq.typedText('1+(2+3]+4');
-      assertLatex('1+\\left(2+3\\right]+4');
-      mq.keystroke('Left Left Left Left Left Left Backspace');
-      assertLatex('\\left[1+2+3\\right]+4');
-      mq.keystroke('Right Right Right Right Backspace');
-      assertLatex('1+2+3+4');
-    });
-
-
-    test('backspacing close bracket then open paren at end', function() {
-      mq.typedText('1+(2+3]');
-      assertLatex('1+\\left(2+3\\right]');
-      mq.keystroke('Backspace');
-      assertLatex('1+\\left(2+3\\right)');
-      mq.keystroke('Left Left Left Backspace');
-      assertLatex('1+2+3');
-    });
-
-    test('backspacing open paren then close bracket at end', function() {
-      mq.typedText('1+(2+3]');
-      assertLatex('1+\\left(2+3\\right]');
-      mq.keystroke('Left Left Left Left Backspace');
-      assertLatex('\\left[1+2+3\\right]');
-      mq.keystroke('Right Right Right Right Backspace');
-      assertLatex('1+2+3');
-    });
-
-    test('backspacing close bracket then open paren at beginning', function() {
-      mq.typedText('(2+3]+4');
-      assertLatex('\\left(2+3\\right]+4');
-      mq.keystroke('Left Left Backspace');
-      assertLatex('\\left(2+3+4\\right)');
-      mq.keystroke('Left Left Left Backspace');
-      assertLatex('2+3+4');
-    });
-
-    test('backspacing open paren then close bracket at beginning', function() {
-      mq.typedText('(2+3]+4');
-      assertLatex('\\left(2+3\\right]+4');
-      mq.keystroke('Left Left Left Left Left Left Backspace');
-      assertLatex('\\left[2+3\\right]+4');
-      mq.keystroke('Right Right Right Right Backspace');
-      assertLatex('2+3+4');
-    });
-
-    test('backspacing close bracket then open paren of empty paren group', function() {
-      mq.typedText('1+(]+4');
-      assertLatex('1+\\left(\\right]+4');
-      mq.keystroke('Left Left Backspace');
-      assertLatex('1+\\left(+4\\right)');
-      mq.keystroke('Backspace');
-      assertLatex('1++4');
-    });
-
-    test('backspacing open paren then close bracket of empty paren group', function() {
-      mq.typedText('1+(]+4');
-      assertLatex('1+\\left(\\right]+4');
-      mq.keystroke('Left Left Left Backspace');
-      assertLatex('\\left[1+\\right]+4');
-      mq.keystroke('Right Backspace');
-      assertLatex('1++4');
-    });
-
-    test('backspacing close bracket then open paren at end of empty paren group', function() {
-      mq.typedText('1+(]');
-      assertLatex('1+\\left(\\right]');
-      mq.keystroke('Backspace');
-      assertLatex('1+\\left(\\right)');
-      mq.keystroke('Backspace');
-      assertLatex('1+');
-    });
-
-    test('backspacing open paren then close bracket at end of empty paren group', function() {
-      mq.typedText('1+(]');
-      assertLatex('1+\\left(\\right]');
-      mq.keystroke('Left Backspace');
-      assertLatex('\\left[1+\\right]');
-      mq.keystroke('Right Right Backspace');
-      assertLatex('1+');
-    });
-
-    test('backspacing close bracket then open paren at beginning of empty paren group', function() {
-      mq.typedText('(]+4');
-      assertLatex('\\left(\\right]+4');
-      mq.keystroke('Left Left Backspace');
-      assertLatex('\\left(+4\\right)');
-      mq.keystroke('Backspace');
-      assertLatex('+4');
-    });
-
-    test('backspacing open paren then close bracket at beginning of empty paren group', function() {
-      mq.typedText('(]+4');
-      assertLatex('\\left(\\right]+4');
-      mq.keystroke('Left Left Left Backspace');
-      assertLatex('\\left[\\right]+4');
-      mq.keystroke('Right Backspace');
-      assertLatex('+4');
-    });
-
-    test('rendering mis-matched brackets from LaTeX then backspacing close bracket then open paren', function() {
-      mq.latex('1+\\left(2+3\\right]+4');
-      assertLatex('1+\\left(2+3\\right]+4');
-      mq.keystroke('Left Left Backspace');
-      assertLatex('1+\\left(2+3+4\\right)');
-      mq.keystroke('Left Left Left Backspace');
-      assertLatex('1+2+3+4');
-    });
-
-    test('rendering mis-matched brackets from LaTeX then backspacing open paren then close bracket', function() {
-      mq.latex('1+\\left(2+3\\right]+4');
-      assertLatex('1+\\left(2+3\\right]+4');
-      mq.keystroke('Left Left Left Left Left Left Backspace');
-      assertLatex('\\left[1+2+3\\right]+4');
-      mq.keystroke('Right Right Right Right Backspace');
-      assertLatex('1+2+3+4');
-    });
-
-    test('rendering paren from LaTeX then backspacing close paren then open paren', function() {
-      mq.latex('1+\\left(2+3\\right)+4');
-      assertLatex('1+\\left(2+3\\right)+4');
-      mq.keystroke('Left Left Backspace');
-      assertLatex('1+\\left(2+3+4\\right)');
-      mq.keystroke('Left Left Left Backspace');
-      assertLatex('1+2+3+4');
-    });
-
-    test('rendering paren from LaTeX then backspacing open paren then close paren', function() {
-      mq.latex('1+\\left(2+3\\right)+4');
-      assertLatex('1+\\left(2+3\\right)+4');
-      mq.keystroke('Left Left Left Left Left Left Backspace');
-      assertLatex('\\left(1+2+3\\right)+4');
-      mq.keystroke('Right Right Right Right Backspace');
-      assertLatex('1+2+3+4');
-    });
-
-    test('wrapping selection in parens then backspacing close paren then open paren', function() {
-      mq.typedText('1+2+3+4');
-      assertLatex('1+2+3+4');
-      mq.keystroke('Left Left Shift-Left Shift-Left Shift-Left').typedText(')');
-      assertLatex('1+\\left(2+3\\right)+4');
-      mq.keystroke('Backspace');
-      assertLatex('1+\\left(2+3+4\\right)');
-      mq.keystroke('Left Left Left Backspace');
-      assertLatex('1+2+3+4');
-    });
-
-    test('wrapping selection in parens then backspacing open paren then close paren', function() {
-      mq.typedText('1+2+3+4');
-      assertLatex('1+2+3+4');
-      mq.keystroke('Left Left Shift-Left Shift-Left Shift-Left').typedText('(');
-      assertLatex('1+\\left(2+3\\right)+4');
-      mq.keystroke('Backspace');
-      assertLatex('\\left(1+2+3\\right)+4');
-      mq.keystroke('Right Right Right Right Backspace');
-      assertLatex('1+2+3+4');
-    });
-
-    test('paren stays one-sided after typing after ghost paren', function() {
-      mq.typedText('1+(2+3');
-      assertLatex('1+\\left(2+3\\right)');
-      mq.keystroke('Right').typedText('+4');
-      assertLatex('1+\\left(2+3\\right)+4');
-      mq.keystroke('Left Left Left Left Left Left Backspace');
-      assertLatex('1+2+3+4');
+      test('close adjacent bracket pair before containing bracket pair', function() {
+        mq.typedText('(1+(2+3');
+        assertLatex('\\left(1+\\left(2+3\\right)\\right)');
+        mq.keystroke('Right').typedText(']');
+        assertLatex('\\left(1+\\left(2+3\\right]\\right)');
+        mq.typedText(']');
+        assertLatex('\\left(1+\\left(2+3\\right]\\right]');
+      });
     });
   });
 });

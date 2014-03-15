@@ -427,18 +427,25 @@ var Bracket = P(MathCommand, function(_, _super) {
 
     scale(this.bracketjQs, min(1 + .2*(height - 1), 1.2), 1.05*height);
   };
+  _.oppBrack = function(node) {
+    return node instanceof Bracket && node.side === -this.side && node;
+  };
+  _.closeOpposing = function(brack) {
+    brack.side = 0;
+    brack.sides[this.side] = this.sides[this.side]; // copy over my info (may be
+    brack.bracketjQs.eq(this.side === L ? 0 : 1) // mis-matched, like [a, b))
+      .removeClass('ghost').html(this.sides[this.side].ch);
+  };
   _.createLeftOf = function(cursor) {
-    var side = this.side, brack = cursor.parent.parent;
-    if (!this.replacedFragment
-        && brack instanceof Bracket && brack.side === -side
-    ) { // I'm in a opposing one-sided bracket, close it!
-      brack.side = 0;
-      brack.sides[side] = this.sides[side]; // copy over my info (may be
-      brack.bracketjQs.eq(side === L ? 0 : 1) // mis-matched, like [a, b))
-        .removeClass('ghost').html(this.sides[side].ch);
-      if (cursor[side]) { // move everything between me and the ghost outside
-        Fragment(cursor[side], cursor.parent.ends[side], -side).disown()
-          .withDirAdopt(-side, brack.parent, brack, brack[side])
+    var side = this.side; // unless wrapping seln in brackets, check if next to
+    if (!this.replacedFragment) { // or inside an opposing one-sided bracket
+      var brack = this.oppBrack(cursor[-side]) || this.oppBrack(cursor.parent.parent);
+    }
+    if (brack) {
+      this.closeOpposing(brack);
+      if (brack === cursor.parent.parent && cursor[side]) { // move the stuff between
+        Fragment(cursor[side], cursor.parent.ends[side], -side) // me and ghost outside
+          .disown().withDirAdopt(-side, brack.parent, brack, brack[side])
           .jQ.insDirOf(side, brack.jQ);
         brack.bubble('edited');
       }
@@ -456,38 +463,68 @@ var Bracket = P(MathCommand, function(_, _super) {
     else cursor.insRightOf(brack);
   };
   _.placeCursor = noop;
-  _.oneSideify = function(side) { // become one-sided by deleting one of the
-    this.side = side;             // brackets in the matched pair
-    this.sides[-side] = { ch: OPP_BRACKS[this.sides[side].ch],
-                          ctrlSeq: OPP_BRACKS[this.sides[side].ctrlSeq] };
-    this.bracketjQs.removeClass('ghost')
-      .eq(side === L ? 1 : 0).addClass('ghost').html(this.sides[-side].ch);
-    if (this[-side]) { // auto-expand so ghost is at far end
-      Fragment(this[-side], this.parent.ends[-side], side).disown()
-        .withDirAdopt(side, this.ends[L], this.ends[L].ends[-side], 0)
-        .jQ.insAtDirEnd(-side, this.ends[L].jQ);
+  _.unwrap = function() {
+    this.ends[L].children().disown().adopt(this.parent, this, this[R])
+      .jQ.insertAfter(this.jQ);
+    this.remove();
+  };
+  _.deleteSide = function(side, outward, cursor) {
+    var parent = this.parent, sib = this[side], farEnd = parent.ends[side];
+
+    if (side === this.side) { // deleting non-ghost of one-sided bracket, unwrap
+      this.unwrap();
+      sib ? cursor.insDirOf(-side, sib) : cursor.insAtDirEnd(side, parent);
+      return;
+    }
+
+    this.side = -side;
+    // check if like deleting outer close-brace of [(1+2)+3} where inner open-
+    if (this.oppBrack(this.ends[L].ends[this.side])) { // paren is ghost, if
+      this.closeOpposing(this.ends[L].ends[this.side]); // so become [1+2)+3
+      var origEnd = this.ends[L].ends[side];
+      this.unwrap();
+      if (origEnd.siblingCreated) origEnd.siblingCreated(side);
+      sib ? cursor.insDirOf(-side, sib) : cursor.insAtDirEnd(side, parent);
+    }
+    else { // check if like deleting inner close-brace of ([1+2}+3) where
+      if (this.oppBrack(this.parent.parent)) { // outer open-paren is ghost,
+        this.parent.parent.closeOpposing(this); // if so become [1+2+3)
+        this.parent.parent.unwrap();
+      }
+      else { // deleting one of a pair of brackets, become one-sided
+        this.sides[side] = { ch: OPP_BRACKS[this.sides[this.side].ch],
+                             ctrlSeq: OPP_BRACKS[this.sides[this.side].ctrlSeq] };
+        this.bracketjQs.removeClass('ghost')
+          .eq(side === L ? 0 : 1).addClass('ghost').html(this.sides[side].ch);
+      }
+      if (sib) { // auto-expand so ghost is at far end
+        var origEnd = this.ends[L].ends[side];
+        Fragment(sib, farEnd, -side).disown()
+          .withDirAdopt(-side, this.ends[L], origEnd, 0)
+          .jQ.insAtDirEnd(side, this.ends[L].jQ);
+        if (origEnd.siblingCreated) origEnd.siblingCreated(side);
+        cursor.insDirOf(-side, sib);
+      } // didn't auto-expand, cursor goes just outside or just inside parens
+      else (outward ? cursor.insDirOf(side, this)
+                    : cursor.insAtDirEnd(side, this.ends[L]));
     }
   };
   _.deleteTowards = function(dir, cursor) {
-    if (dir === -this.side) { // deleting non-ghost of one-sided bracket, so
-      this.ends[L].children().disown() // move everything in me outside, and
-        .withDirAdopt(dir, this.parent, this[dir], this).jQ.insDirOf(dir, this.jQ);
-      this.remove(); // remove me
-      cursor[dir] = cursor[-dir] ? cursor[-dir][dir] : cursor.parent.ends[-dir];
-      return;
-    }
-    cursor.insAtDirEnd(-dir, this.ends[L]);
-    cursor[-dir] = this[-dir];
-    this.oneSideify(dir);
+    this.deleteSide(-dir, false, cursor);
   };
   _.finalizeTree = function() {
     this.ends[L].deleteOutOf = function(dir, cursor) {
-      if (dir === this.parent.side) return cursor.unwrapGramp(); // non-ghost side
-
-      this.parent.oneSideify(-dir);
-      cursor[-dir] ? cursor.insDirOf(dir, cursor[-dir])
-                   : cursor.insAtDirEnd(-dir, this);
+      this.parent.deleteSide(dir, true, cursor);
     };
+    // FIXME HACK: after initial creation/insertion, finalizeTree would only be
+    // called if the paren is selected and replaced, e.g. by LiveFraction
+    this.finalizeTree = function() {
+      this.bracketjQs.eq(this.side === L ? 1 : 0).removeClass('ghost');
+      this.side = 0;
+    };
+  };
+  _.siblingCreated = function(dir) { // if something typed between ghost and far
+    if (dir === -this.side) this.finalizeTree(); // end of its block, solidify
   };
 });
 
