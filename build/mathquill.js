@@ -1564,12 +1564,13 @@ Controller.open(function(_, _super) {
 Controller.open(function(_) {
   _.focusBlurEvents = function() {
     var ctrlr = this, root = ctrlr.root, cursor = ctrlr.cursor;
+    var blurTimeout;
     ctrlr.textarea.focus(function() {
       ctrlr.blurred = false;
+      clearTimeout(blurTimeout);
       root.jQ.addClass('focused');
       if (!cursor.parent)
         cursor.insAtRightEnd(root);
-      cursor.parent.jQ.addClass('hasCursor');
       if (cursor.selection) {
         cursor.selection.jQ.removeClass('blur');
         ctrlr.selectionChanged(); //re-select textarea contents after tabbing away and back
@@ -1578,11 +1579,23 @@ Controller.open(function(_) {
         cursor.show();
     }).blur(function() {
       ctrlr.blurred = true;
-      root.jQ.removeClass('focused');
-      cursor.hide().parent.blur();
-      if (cursor.selection)
-        cursor.selection.jQ.addClass('blur');
+      blurTimeout = setTimeout(function() { // wait for blur on window; if
+        root.postOrder('intentionalBlur'); // none, intentional blur: #264
+        cursor.clearSelection();
+        blur();
+      });
+      $(window).on('blur', windowBlur);
     }).blur();
+    function windowBlur() { // blur event also fired on window, just switching
+      clearTimeout(blurTimeout); // tabs/windows, not intentional blur
+      if (cursor.selection) cursor.selection.jQ.addClass('blur');
+      blur();
+    }
+    function blur() { // not directly in the textarea blur handler so as to be
+      cursor.hide().parent.blur(); // synchronous with/in the same frame as
+      root.jQ.removeClass('focused'); // clearing/blurring selection
+      $(window).off('blur', windowBlur);
+    }
   };
 });
 
@@ -3254,6 +3267,65 @@ var SupSub = P(MathCommand, function(_, _super) {
   };
 });
 
+var SummationNotation = P(MathCommand, function(_, _super) {
+  _.init = function(ch, html) {
+    var htmlTemplate =
+      '<span class="large-operator non-leaf">'
+    +   '<span class="to"><span>&1</span></span>'
+    +   '<big>'+html+'</big>'
+    +   '<span class="from"><span>&0</span></span>'
+    + '</span>'
+    ;
+    Symbol.prototype.init.call(this, ch, htmlTemplate);
+  };
+  _.latex = function() {
+    function simplify(latex) {
+      return latex.length === 1 ? latex : '{' + (latex || ' ') + '}';
+    }
+    return this.ctrlSeq + '_' + simplify(this.ends[L].latex()) +
+      '^' + simplify(this.ends[R].latex());
+  };
+  _.parser = function() {
+    var string = Parser.string;
+    var optWhitespace = Parser.optWhitespace;
+    var succeed = Parser.succeed;
+    var block = latexMathParser.block;
+
+    var self = this;
+    var blocks = self.blocks = [ MathBlock(), MathBlock() ];
+    for (var i = 0; i < blocks.length; i += 1) {
+      blocks[i].adopt(self, self.ends[R], 0);
+    }
+
+    return optWhitespace.then(string('_').or(string('^'))).then(function(supOrSub) {
+      var child = blocks[supOrSub === '_' ? 0 : 1];
+      return block.then(function(block) {
+        block.children().adopt(child, child.ends[R], 0);
+        return succeed(self);
+      });
+    }).many().result(self);
+  };
+  _.finalizeTree = function() {
+    this.downInto = this.ends[L];
+    this.upInto = this.ends[R];
+    this.ends[L].upOutOf = this.ends[R];
+    this.ends[R].downOutOf = this.ends[L];
+  };
+});
+
+LatexCmds['∑'] =
+LatexCmds.sum =
+LatexCmds.summation = bind(SummationNotation,'\\sum ','&sum;');
+
+LatexCmds['∏'] =
+LatexCmds.prod =
+LatexCmds.product = bind(SummationNotation,'\\prod ','&prod;');
+
+LatexCmds.coprod =
+LatexCmds.coproduct = bind(SummationNotation,'\\coprod ','&#8720;');
+
+
+
 function insLeftOfMeUnlessAtEnd(cursor) {
   // cursor.insLeftOf(cmd), unless cursor at the end of block, and every
   // ancestor cmd is at the end of every ancestor block
@@ -3327,12 +3399,12 @@ CharCmds['/'] = P(Fraction, function(_, _super) {
         !(
           leftward instanceof BinaryOperator ||
           leftward instanceof TextBlock ||
-          leftward instanceof BigSymbol ||
+          leftward instanceof SummationNotation ||
           /^[,;:]$/.test(leftward.ctrlSeq)
         ) //lookbehind for operator
       ) leftward = leftward[L];
 
-      if (leftward instanceof BigSymbol && leftward[R] instanceof SupSub) {
+      if (leftward instanceof SummationNotation && leftward[R] instanceof SupSub) {
         leftward = leftward[R];
         if (leftward[R] instanceof SupSub && leftward[R].ctrlSeq != leftward.ctrlSeq)
           leftward = leftward[R];
@@ -3533,7 +3605,7 @@ var Bracket = P(MathCommand, function(_, _super) {
     };
     // FIXME HACK: after initial creation/insertion, finalizeTree would only be
     // called if the paren is selected and replaced, e.g. by LiveFraction
-    this.finalizeTree = function() {
+    this.finalizeTree = this.intentionalBlur = function() {
       this.bracketjQs.eq(this.side === L ? 1 : 0).removeClass('ghost');
       this.side = 0;
     };
@@ -3734,6 +3806,10 @@ LatexCmds.MathQuillMathField = P(MathCommand, function(_, _super) {
 /**********************************
  * Symbols and Special Characters
  *********************************/
+
+LatexCmds['∫'] =
+LatexCmds['int'] =
+LatexCmds.integral = bind(Symbol,'\\int ','<big>&int;</big>');
 
 LatexCmds.f = bind(Symbol, 'f', '<var class="florin">&fnof;</var><span style="display:inline-block;width:0">&nbsp;</span>');
 
@@ -4147,20 +4223,6 @@ LatexCmds.notsupsete = LatexCmds.notsupseteq =
 LatexCmds.nsupersete = LatexCmds.nsuperseteq =
 LatexCmds.notsupersete = LatexCmds.notsuperseteq =
   bind(BinaryOperator,'\\not\\supseteq ','&#8841;');
-
-
-//sum, product, coproduct, integral
-var BigSymbol = P(Symbol, function(_, _super) {
-  _.init = function(ch, html) {
-    _super.init.call(this, ch, '<big>'+html+'</big>');
-  };
-});
-
-LatexCmds['∑'] = LatexCmds.sum = LatexCmds.summation = bind(BigSymbol,'\\sum ','&sum;');
-LatexCmds['∏'] = LatexCmds.prod = LatexCmds.product = bind(BigSymbol,'\\prod ','&prod;');
-LatexCmds.coprod = LatexCmds.coproduct = bind(BigSymbol,'\\coprod ','&#8720;');
-LatexCmds['∫'] = LatexCmds['int'] = LatexCmds.integral = bind(BigSymbol,'\\int ','&int;');
-
 
 
 //the canonical sets of numbers

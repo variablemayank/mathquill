@@ -255,10 +255,12 @@
   padding: 0 .2em;
 }
 .mathquill-rendered-math .fraction,
+.mathquill-rendered-math .large-operator,
 .mathquill-rendered-math x:-moz-any-link {
   display: -moz-groupbox;
 }
 .mathquill-rendered-math .fraction,
+.mathquill-rendered-math .large-operator,
 .mathquill-rendered-math x:-moz-any-link,
 .mathquill-rendered-math x:default {
   display: inline-block;
@@ -306,6 +308,23 @@
 }
 .mathquill-rendered-math .vector-stem {
   display: block;
+}
+.mathquill-rendered-math .large-operator {
+  text-align: center;
+}
+.mathquill-rendered-math .large-operator .from,
+.mathquill-rendered-math .large-operator big,
+.mathquill-rendered-math .large-operator .to {
+  display: block;
+}
+.mathquill-rendered-math .large-operator .from,
+.mathquill-rendered-math .large-operator .to {
+  font-size: 80%;
+}
+.mathquill-rendered-math .large-operator .from {
+  float: right;
+  /* take out of normal flow to manipulate baseline */
+  width: 100%;
 }
 .mathquill-rendered-math,
 .mathquill-rendered-math .mathquill-editable {
