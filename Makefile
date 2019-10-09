@@ -157,12 +157,12 @@ SITE_COMMITMSG = 'updating mathquill to $(VERSION)'
 DOWNLOADS_PAGE = $(SITE)/downloads.html
 DIST_DOWNLOAD = $(SITE)/downloads/$(DIST)
 
-site: $(SITE) $(SITE)/mathquill $(SITE)/demo.html $(SITE)/support $(DOWNLOADS_PAGE)
+site: $(SITE) $(SITE)/mathquill $(SITE)/index.html $(SITE)/support $(DOWNLOADS_PAGE)
 
 publish: site-pull site
 	pwd
 	cd $(SITE) \
-	&& git add -- mathquill demo.html support downloads downloads.html \
+	&& git add -- mathquill index.html support downloads downloads.html \
 	&& git commit -m $(SITE_COMMITMSG) \
 	&& git push
 
@@ -208,10 +208,10 @@ $(DOWNLOADS_PAGE): $(DIST_DOWNLOAD)
 	@rm tmp/versions-list.html
 	@echo done.
 
-$(SITE)/demo.html: test/demo.html
+$(SITE)/index.html: test/index.html
 	cat $^ \
 	| $(SED) 's:../build/:mathquill/:' \
-	| $(SED) 's:local test page:live demo:' \
+	| $(SED) 's:local test page:live index:' \
 	> $@
 
 $(SITE)/support: test/support

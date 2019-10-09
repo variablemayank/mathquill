@@ -83,7 +83,7 @@ function run_make_test() {
       console.error('Exit Code ' + code);
     } else {
       console.log('\nMathQuill is now running on localhost:9292');
-      console.log('Open http://localhost:9292/test/demo.html\n');
+      console.log('Open http://localhost:9292/test/index.html\n');
     }
     for (var i = 0; i < q.length; i += 1) q[i]();
     q = undefined;
